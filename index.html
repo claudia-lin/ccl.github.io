@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Live Camera – Face Accessories</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      min-height: 100vh;
+      background: linear-gradient(135deg, #1a1a2e 0%, #16213e 50%, #0f3460 100%);
+      font-family: 'Segoe UI', system-ui, sans-serif;
+      color: #e8e8e8;
+      display: flex;
+      flex-direction: row;
+      align-items: flex-start;
+      justify-content: center;
+      padding: 1rem;
+      gap: 1.5rem;
+    }
+    .dashboard {
+      width: 200px;
+      flex-shrink: 0;
+      background: rgba(255,255,255,0.06);
+      border-radius: 12px;
+      padding: 1rem;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .dashboard h2 {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-bottom: 1rem;
+      color: rgba(255,255,255,0.9);
+      letter-spacing: 0.02em;
+    }
+    .accessory-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .accessory-btn {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 0.75rem 1rem;
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 10px;
+      background: rgba(255,255,255,0.05);
+      color: #e8e8e8;
+      font-size: 0.95rem;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+      text-align: left;
+    }
+    .accessory-btn:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(255,255,255,0.25);
+      transform: translateX(4px);
+    }
+    .accessory-btn.active {
+      background: rgba(67, 97, 238, 0.35);
+      border-color: #4361ee;
+      box-shadow: 0 0 0 1px #4361ee;
+    }
+    .accessory-btn .thumb {
+      width: 56px;
+      height: 56px;
+      border-radius: 10px;
+      background: rgba(0,0,0,0.3);
+      object-fit: cover;
+      flex-shrink: 0;
+    }
+    .accessory-btn .thumb.none {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.5rem;
+      color: rgba(255,255,255,0.6);
+    }
+    .main {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      flex: 1;
+      min-width: 0;
+    }
+    h1 { font-size: 1.5rem; font-weight: 600; margin-bottom: 1rem; letter-spacing: 0.02em; }
+    .camera-wrap {
+      position: relative;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.4);
+      background: #0d0d14;
+      max-width: 100%;
+      display: inline-block;
+    }
+    .camera-wrap::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      border-radius: 12px;
+      padding: 2px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.15), transparent 40%, transparent 60%, rgba(255,255,255,0.08));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: xor;
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    #video {
+      display: block;
+      width: 100%;
+      max-width: 720px;
+      height: auto;
+      aspect-ratio: 4/3;
+      object-fit: cover;
+      transform: scaleX(-1);
+    }
+    .camera-wrap.mirror #video { transform: scaleX(1); }
+    .camera-wrap.mirror #overlay { transform: scaleX(1); }
+    #overlay {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      transform: scaleX(-1);
+    }
+    .controls {
+      display: flex;
+      gap: 0.75rem;
+      margin-top: 1rem;
+      flex-wrap: wrap;
+      justify-content: center;
+    }
+    button {
+      padding: 0.6rem 1.2rem;
+      border: none;
+      border-radius: 8px;
+      font-size: 0.95rem;
+      font-weight: 500;
+      cursor: pointer;
+      transition: transform 0.15s, box-shadow 0.15s;
+    }
+    button:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+    button:active { transform: translateY(0); }
+    .btn-primary { background: linear-gradient(180deg, #4361ee, #3a56d4); color: white; }
+    .btn-secondary { background: rgba(255,255,255,0.12); color: #e8e8e8; border: 1px solid rgba(255,255,255,0.2); }
+    .status { margin-top: 1rem; font-size: 0.9rem; opacity: 0.85; }
+    .status.error { color: #f87171; }
+    .status.on { color: #86efac; }
+    .placeholder {
+      aspect-ratio: 4/3;
+      width: 100%;
+      max-width: 720px;
+      background: #1a1a2e;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: rgba(255,255,255,0.5);
+      font-size: 0.95rem;
+      text-align: center;
+      padding: 1rem;
+    }
+    @media (max-width: 700px) {
+      body { flex-direction: column; }
+      .dashboard { width: 100%; }
+      .accessory-list { flex-direction: row; flex-wrap: wrap; }
+      .accessory-btn { flex: 1 1 auto; min-width: 140px; }
+    }
+  </style>
+</head>
+<body>
+  <aside class="dashboard">
+    <h2>Sunglasses</h2>
+    <div class="accessory-list" id="accessoryList"></div>
+  </aside>
+  <main class="main">
+    <h1>Try on sunglasses</h1>
+    <div class="camera-wrap">
+      <video id="video" autoplay playsinline></video>
+      <canvas id="overlay"></canvas>
+      <div id="placeholder" class="placeholder">Click "Start camera", then pick a pair of sunglasses from the side.</div>
+    </div>
+    <div class="controls">
+      <button class="btn-primary" id="startBtn">Start camera</button>
+      <button class="btn-secondary" id="stopBtn" disabled>Stop camera</button>
+      <button class="btn-secondary" id="mirrorBtn">Mirror off</button>
+    </div>
+    <p id="status" class="status"></p>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <script>
+    const video = document.getElementById('video');
+    const overlay = document.getElementById('overlay');
+    const ctx = overlay.getContext('2d');
+    const placeholder = document.getElementById('placeholder');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const mirrorBtn = document.getElementById('mirrorBtn');
+    const statusEl = document.getElementById('status');
+    const wrap = document.querySelector('.camera-wrap');
+
+    const MODEL_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@0.22.2/weights';
+    let stream = null;
+    let detectionRunning = false;
+    let selectedAccessory = 'none';
+
+    const SUNGLASSES_OPTIONS = [
+      { id: 'none', label: 'None', src: null },
+      { id: 'sun1', label: 'Iridescent', src: 'sunglasses1.png' },
+      { id: 'sun2', label: 'Black & Silver', src: 'sunglasses2.png' },
+    ];
+    const sunglassImages = {};
+    const sunglassImagesNoBg = {};
+    const DARK_THRESHOLD = 55;
+
+    function removeImageBackground(img, callback) {
+      const w = img.naturalWidth;
+      const h = img.naturalHeight;
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      const c = canvas.getContext('2d');
+      c.drawImage(img, 0, 0);
+      const data = c.getImageData(0, 0, w, h);
+      const d = data.data;
+      for (let i = 0; i < d.length; i += 4) {
+        const r = d[i], g = d[i + 1], b = d[i + 2];
+        if (r <= DARK_THRESHOLD && g <= DARK_THRESHOLD && b <= DARK_THRESHOLD) d[i + 3] = 0;
+      }
+      c.putImageData(data, 0, 0);
+      const out = new Image();
+      out.onload = () => { callback(out); };
+      out.src = canvas.toDataURL('image/png');
+    }
+
+    function setStatus(msg, type = '') {
+      statusEl.textContent = msg;
+      statusEl.className = 'status ' + type;
+    }
+
+    function renderAccessoryList() {
+      const list = document.getElementById('accessoryList');
+      list.innerHTML = SUNGLASSES_OPTIONS.map(a => `
+        <button type="button" class="accessory-btn ${a.id === selectedAccessory ? 'active' : ''}" data-id="${a.id}">
+          ${a.src ? `<img class="thumb" src="${a.src}" alt="${a.label}">` : `<span class="thumb none">✕</span>`}
+          <span>${a.label}</span>
+        </button>
+      `).join('');
+      list.querySelectorAll('.accessory-btn').forEach(btn => {
+        btn.addEventListener('click', () => {
+          selectedAccessory = btn.dataset.id;
+          list.querySelectorAll('.accessory-btn').forEach(b => b.classList.remove('active'));
+          btn.classList.add('active');
+        });
+      });
+      SUNGLASSES_OPTIONS.filter(a => a.src).forEach(a => {
+        const img = new Image();
+        img.src = a.src;
+        img.onload = () => {
+          sunglassImages[a.id] = img;
+          removeImageBackground(img, (noBg) => { sunglassImagesNoBg[a.id] = noBg; });
+        };
+      });
+    }
+
+    function resizeOverlay() {
+      const v = video;
+      if (!v.videoWidth) return;
+      overlay.width = v.clientWidth;
+      overlay.height = v.clientHeight;
+    }
+
+    function getEyeCenters(landmarks) {
+      const leftEye = landmarks.getLeftEye();
+      const rightEye = landmarks.getRightEye();
+      const leftCenter = leftEye.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
+      leftCenter.x /= leftEye.length;
+      leftCenter.y /= leftEye.length;
+      const rightCenter = rightEye.reduce((a, p) => ({ x: a.x + p.x, y: a.y + p.y }), { x: 0, y: 0 });
+      rightCenter.x /= rightEye.length;
+      rightCenter.y /= rightEye.length;
+      return { leftCenter, rightCenter };
+    }
+
+    function drawSunglassesImage(landmarks, img) {
+      if (!img || !img.complete || !img.naturalWidth) return;
+      const { leftCenter, rightCenter } = getEyeCenters(landmarks);
+      const eyeDist = Math.hypot(rightCenter.x - leftCenter.x, rightCenter.y - leftCenter.y);
+      const centerX = (leftCenter.x + rightCenter.x) / 2;
+      const centerY = (leftCenter.y + rightCenter.y) / 2;
+      const drawWidth = eyeDist * 2.4;
+      const drawHeight = (img.naturalHeight / img.naturalWidth) * drawWidth;
+      const x = centerX - drawWidth / 2;
+      const y = centerY - drawHeight * 0.45;
+
+      ctx.save();
+      ctx.drawImage(img, x, y, drawWidth, drawHeight);
+      ctx.restore();
+    }
+
+    function drawAccessory(detection, accessory) {
+      if (accessory === 'none') return;
+      const img = sunglassImagesNoBg[accessory] || sunglassImages[accessory];
+      if (img) drawSunglassesImage(detection.landmarks, img);
+    }
+
+    async function runDetection() {
+      if (!detectionRunning || !video.srcObject || !overlay.width) return;
+      try {
+        const detections = await faceapi.detectAllFaces(video, new faceapi.TinyFaceDetectorOptions({ inputSize: 224 }))
+          .withFaceLandmarks();
+        ctx.clearRect(0, 0, overlay.width, overlay.height);
+        if (detections.length > 0 && selectedAccessory !== 'none') {
+          const dims = { width: overlay.width, height: overlay.height };
+          const resized = faceapi.resizeResults(detections, dims);
+          drawAccessory(resized[0], selectedAccessory);
+        }
+      } catch (e) {}
+      requestAnimationFrame(runDetection);
+    }
+
+    async function startCamera() {
+      try {
+        setStatus('Loading face detection…');
+        await Promise.all([
+          faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL)
+        ]);
+        setStatus('Starting camera…');
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+        video.srcObject = stream;
+        placeholder.style.display = 'none';
+        video.style.display = 'block';
+        startBtn.disabled = true;
+        stopBtn.disabled = false;
+
+        video.onloadedmetadata = () => {
+          resizeOverlay();
+          video.onresize = resizeOverlay;
+          detectionRunning = true;
+          runDetection();
+          setStatus('Camera on – choose sunglasses from the side', 'on');
+        };
+      } catch (err) {
+        setStatus('Error: ' + (err.message || 'Camera or models failed'), 'error');
+        console.error(err);
+      }
+    }
+
+    function stopCamera() {
+      detectionRunning = false;
+      if (stream) {
+        stream.getTracks().forEach(t => t.stop());
+        stream = null;
+      }
+      video.srcObject = null;
+      video.style.display = 'none';
+      ctx.clearRect(0, 0, overlay.width, overlay.height);
+      overlay.width = 0;
+      overlay.height = 0;
+      placeholder.style.display = 'flex';
+      placeholder.textContent = 'Click "Start camera", then pick a pair of sunglasses from the side.';
+      startBtn.disabled = false;
+      stopBtn.disabled = true;
+      setStatus('');
+    }
+
+    function toggleMirror() {
+      wrap.classList.toggle('mirror');
+      mirrorBtn.textContent = wrap.classList.contains('mirror') ? 'Mirror on' : 'Mirror off';
+    }
+
+    renderAccessoryList();
+    startBtn.addEventListener('click', startCamera);
+    stopBtn.addEventListener('click', stopCamera);
+    mirrorBtn.addEventListener('click', toggleMirror);
+  </script>
+</body>
+</html>
